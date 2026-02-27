@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Dodger - Esquiva los Asteroides</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .screen {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        input:focus {
+            outline: 3px solid #ffd700;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.2);
+            margin-top: 10px;
+        }
+
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .success {
+            background: #44ff44;
+            color: #333;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        #gameCanvas {
+            display: block;
+            margin: 20px auto;
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .stats {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .stats p {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .link-btn {
+            background: none;
+            color: white;
+            text-decoration: underline;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .instructions p {
+            margin: 8px 0;
+        }
+
+        #leaderboard {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .leaderboard-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leaderboard-item.current-user {
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid #ffd700;
+        }
+
+        .rank {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen active">
+            <h1>🚀 Space Dodger</h1>
+            <h2>Iniciar Sesión</h2>
+            <div id="loginError" class="error"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginUsername">Usuario</label>
+                    <input type="text" id="loginUsername" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" required autocomplete="current-password">
+                </div>
+                <button type="submit">Entrar</button>
+                <button type="button" class="secondary-btn" onclick="showRegister()">¿No tienes cuenta? Regístrate</button>
+            </form>
+        </div>
+
+        <!-- Register Screen -->
+        <div id="registerScreen" class="screen">
+            <h1>🚀 Space Dodger</h1>
+            <h2>Crear Cuenta</h2>
+            <div id="registerError" class="error"></div>
+            <div id="registerSuccess" class="success"></div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerUsername">Usuario</label>
+                    <input type="text" id="registerUsername" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <input type="password" id="registerPassword" required autocomplete="new-password">
+                </div>
+                <button type="submit">Registrarse</button>
+                <button type="button" class="secondary-btn" onclick="showLogin()">¿Ya tienes cuenta? Inicia sesión</button>
+            </form>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menuScreen" class="screen">
+            <h1>🚀 Space Dodger</h1>
+            <h2>Bienvenido, <span id="usernameDisplay"></span>!</h2>
+            
+            <div class="instructions">
+                <p><strong>📋 Instrucciones:</strong></p>
+                <p>⬅️ ➡️ Usa las flechas o A/D para moverte</p>
+                <p>🎯 Esquiva los asteroides rojos</p>
+                <p>⭐ ¡Sobrevive el mayor tiempo posible!</p>
+            </div>
+
+            <div class="stats">
+                <p>🏆 Tu mejor puntuación: <span id="bestScore">0</span></p>
+                <p>🎮 Partidas jugadas: <span id="gamesPlayed">0</span></p>
+            </div>
+
+            <button onclick="startGame()">▶️ Jugar</button>
+            <button class="secondary-btn" onclick="showLeaderboard()">🏆 Tabla de Líderes</button>
+            <button class="secondary-btn" onclick="logout()">🚪 Cerrar Sesión</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-info">
+                <div>⭐ Puntuación: <span id="currentScore">0</span></div>
+                <div>❤️ Vidas: <span id="lives">3</span></div>
+            </div>
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+            <button onclick="pauseGame()">⏸️ Pausar</button>
+            <button class="secondary-btn" onclick="quitGame()">🏠 Salir al Menú</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen">
+            <h1>💥 Game Over</h1>
+            <div class="stats">
+                <p>Tu puntuación: <span id="finalScore">0</span></p>
+                <p id="newRecord" style="display:none; color: #ffd700; font-size: 1.3em;">🎉 ¡NUEVO RÉCORD!</p>
+            </div>
+            <button onclick="startGame()">🔄 Jugar de Nuevo</button>
+            <button class="secondary-btn" onclick="showMenu()">🏠 Menú Principal</button>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen" class="screen">
+            <h1>🏆 Tabla de Líderes</h1>
+            <div id="leaderboardLoading" class="loading">Cargando...</div>
+            <div id="leaderboard"></div>
+            <button onclick="showMenu()">🏠 Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - CHANGE THIS TO YOUR BACKEND URL
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // Global state
+        let token = localStorage.getItem('token') || null;
+        let currentUser = null;
+        let gameLoop = null;
+        let isPaused = false;
+
+        // Game state
+        const game = {
+            canvas: null,
+            ctx: null,
+            player: { x: 275, y: 520, width: 50, height: 50, speed: 8 },
+            obstacles: [],
+            score: 0,
+            lives: 3,
+            keys: {},
+            difficulty: 1,
+            obstacleSpeed: 3,
+            spawnRate: 60
+        };
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            if (token) {
+                loadProfile();
+            } else {
+                showScreen('loginScreen');
+            }
+        });
+
+        // API Functions
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const options = { method, headers };
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Error en la petición');
+            }
+
+            return data;
+        }
+
+        // Authentication
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                // Expected request: { username: string, password: string }
+                // Expected response: { token: string, user: { id, username, email } }
+                const data = await apiCall('/auth/login', 'POST', { username, password });
+                
+                token = data.token;
+                localStorage.setItem('token', token);
+                currentUser = data.user;
+                
+                showMenu();
+            } catch (error) {
+                showError('loginError', error.message);
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            try {
+                // Expected request: { username: string, email: string, password: string }
+                // Expected response: { message: string, user: { id, username, email } }
+                const data = await apiCall('/auth/register', 'POST', { username, email, password });
+                
+                showSuccess('registerSuccess', '¡Cuenta creada! Ahora inicia sesión.');
+                setTimeout(() => {
+                    showLogin();
+                }, 2000);
+            } catch (error) {
+                showError('registerError', error.message);
+            }
+        });
+
+        async function loadProfile() {
+            try {
+                // Expected response: { id, username, email, createdAt, stats?: { gamesPlayed, bestScore } }
+                const data = await apiCall('/profile');
+                currentUser = data;
+                showMenu();
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                logout();
+            }
+        }
+
+        async function submitScore(score) {
+            try {
+                // Expected request: { score: number, gameType?: string }
+                // Expected response: { message: string, score: { id, score, createdAt }, isNewRecord?: boolean }
+                const data = await apiCall('/scores', 'POST', { 
+                    score: score,
+                    gameType: 'space-dodger'
+                });
+                
+                return data.isNewRecord || false;
+            } catch (error) {
+                console.error('Error submitting score:', error);
+                return false;
+            }
+        }
+
+        async function loadLeaderboard() {
+            try {
+                // Expected response: [{ username: string, score: number, createdAt: string }]
+                // Note: You may need to add GET /api/scores or similar endpoint to your backend
+                const data = await apiCall('/scores?limit=10');
+                return data;
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                return [];
+            }
+        }
+
+        function logout() {
+            token = null;
+            currentUser = null;
+            localStorage.removeItem('token');
+            showLogin();
+        }
+
+        // Screen Navigation
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showLogin() {
+            showScreen('loginScreen');
+            document.getElementById('loginForm').reset();
+        }
+
+        function showRegister() {
+            showScreen('registerScreen');
+            document.getElementById('registerForm').reset();
+        }
+
+        function showMenu() {
+            showScreen('menuScreen');
+            document.getElementById('usernameDisplay').textContent = currentUser?.username || 'Jugador';
+            
+            // Display stats if available from profile
+            if (currentUser?.stats) {
+                document.getElementById('bestScore').textContent = currentUser.stats.bestScore || 0;
+                document.getElementById('gamesPlayed').textContent = currentUser.stats.gamesPlayed || 0;
+            }
+        }
+
+        async function showLeaderboard() {
+            showScreen('leaderboardScreen');
+            document.getElementById('leaderboardLoading').style.display = 'block';
+            document.getElementById('leaderboard').innerHTML = '';
+
+            const scores = await loadLeaderboard();
+            document.getElementById('leaderboardLoading').style.display = 'none';
+
+            if (scores.length === 0) {
+                document.getElementById('leaderboard').innerHTML = '<p style="text-align:center">No hay puntuaciones todavía</p>';
+                return;
+            }
+
+            const html = scores.map((entry, index) => {
+                const isCurrentUser = entry.username === currentUser?.username;
+                return `
+                    <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
+                        <div>
+                            <span class="rank">#${index + 1}</span>
+                            <strong>${entry.username}</strong>
+                        </div>
+                        <div style="font-size:1.2em;font-weight:bold">${entry.score} pts</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('leaderboard').innerHTML = html;
+        }
+
+        // Game Functions
+        function startGame() {
+            showScreen('gameScreen');
+            
+            game.canvas = document.getElementById('gameCanvas');
+            game.ctx = game.canvas.getContext('2d');
+            
+            // Reset game state
+            game.player = { x: 275, y: 520, width: 50, height: 50, speed: 8 };
+            game.obstacles = [];
+            game.score = 0;
+            game.lives = 3;
+            game.difficulty = 1;
+            game.obstacleSpeed = 3;
+            game.spawnRate = 60;
+            isPaused = false;
+
+            updateUI();
+            
+            // Keyboard controls
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            
+            // Start game loop
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            gameLoop = requestAnimationFrame(updateGame);
+        }
+
+        function handleKeyDown(e) {
+            if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(e.key)) {
+                e.preventDefault();
+                game.keys[e.key] = true;
+            }
+        }
+
+        function handleKeyUp(e) {
+            game.keys[e.key] = false;
+        }
+
+        function updateGame() {
+            if (isPaused) {
+                gameLoop = requestAnimationFrame(updateGame);
+                return;
+            }
+
+            // Clear canvas
+            game.ctx.fillStyle = '#000';
+            game.ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
+
+            // Draw stars background
+            game.ctx.fillStyle = '#fff';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 137) % game.canvas.width;
+                const y = ((game.score + i * 50) % game.canvas.height);
+                game.ctx.fillRect(x, y, 2, 2);
+            }
+
+            // Move player
+            if (game.keys['ArrowLeft'] || game.keys['a'] || game.keys['A']) {
+                game.player.x = Math.max(0, game.player.x - game.player.speed);
+            }
+            if (game.keys['ArrowRight'] || game.keys['d'] || game.keys['D']) {
+                game.player.x = Math.min(game.canvas.width - game.player.width, game.player.x + game.player.speed);
+            }
+
+            // Draw player (spaceship)
+            game.ctx.fillStyle = '#00ff00';
+            game.ctx.beginPath();
+            game.ctx.moveTo(game.player.x + 25, game.player.y);
+            game.ctx.lineTo(game.player.x, game.player.y + 50);
+            game.ctx.lineTo(game.player.x + 50, game.player.y + 50);
+            game.ctx.closePath();
+            game.ctx.fill();
+
+            // Spawn obstacles
+            if (Math.random() < (1 / game.spawnRate)) {
+                game.obstacles.push({
+                    x: Math.random() * (game.canvas.width - 40),
+                    y: -40,
+                    width: 40,
+                    height: 40,
+                    speed: game.obstacleSpeed
+                });
+            }
+
+            // Update and draw obstacles
+            game.ctx.fillStyle = '#ff0000';
+            for (let i = game.obstacles.length - 1; i >= 0; i--) {
+                const obs = game.obstacles[i];
+                obs.y += obs.speed;
+
+                // Draw asteroid
+                game.ctx.beginPath();
+                game.ctx.arc(obs.x + 20, obs.y + 20, 20, 0, Math.PI * 2);
+                game.ctx.fill();
+
+                // Check collision
+                if (obs.y + obs.height > game.player.y &&
+                    obs.y < game.player.y + game.player.height &&
+                    obs.x + obs.width > game.player.x &&
+                    obs.x < game.player.x + game.player.width) {
+                    
+                    game.lives--;
+                    game.obstacles.splice(i, 1);
+                    updateUI();
+
+                    if (game.lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                // Remove off-screen obstacles and add score
+                if (obs.y > game.canvas.height) {
+                    game.obstacles.splice(i, 1);
+                    game.score++;
+                    updateUI();
+
+                    // Increase difficulty
+                    if (game.score % 10 === 0) {
+                        game.difficulty++;
+                        game.obstacleSpeed = Math.min(8, 3 + game.difficulty * 0.3);
+                        game.spawnRate = Math.max(30, 60 - game.difficulty * 2);
+                    }
+                }
+            }
+
+            gameLoop = requestAnimationFrame(updateGame);
+        }
+
+        function updateUI() {
+            document.getElementById('currentScore').textContent = game.score;
+            document.getElementById('lives').textContent = game.lives;
+        }
+
+        function pauseGame() {
+            isPaused = !isPaused;
+            const btn = event.target;
+            btn.textContent = isPaused ? '▶️ Reanudar' : '⏸️ Pausar';
+        }
+
+        function quitGame() {
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+            showMenu();
+        }
+
+        async function endGame() {
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+
+            const isNewRecord = await submitScore(game.score);
+
+            document.getElementById('finalScore').textContent = game.score;
+            document.getElementById('newRecord').style.display = isNewRecord ? 'block' : 'none';
+
+            // Update local best score display
+            if (currentUser?.stats) {
+                currentUser.stats.bestScore = Math.max(currentUser.stats.bestScore || 0, game.score);
+                currentUser.stats.gamesPlayed = (currentUser.stats.gamesPlayed || 0) + 1;
+            }
+
+            showScreen('gameOverScreen');
+        }
+
+        // Helper functions
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function showSuccess(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
